@@ -8,6 +8,8 @@
 
 import UIKit
 import CoreData
+import SystemConfiguration
+import Firebase
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -17,9 +19,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        FirebaseApp.configure()
+        window = UIWindow(frame: UIScreen.main.bounds)
+        window?.makeKeyAndVisible()
+        
+        
+        if checkIfNetworkReachability() {
+            
+            window?.rootViewController = UINavigationController(rootViewController: MainViewController())
+            window?.backgroundColor = UIColor.white
+            
+        } else {
+            window?.rootViewController = UINavigationController(rootViewController: OfflineSupportController())
+            
+        }
+        return true
+
+    }
+    func checkIfNetworkReachability() -> Bool {
+        guard let reachability = SCNetworkReachabilityCreateWithName(nil, "www.google.com") else { return false }
+        var reachabilityFlags = SCNetworkReachabilityFlags()
+        SCNetworkReachabilityGetFlags(reachability, &reachabilityFlags)
+        
+        if !isNetworkReachable(with: reachabilityFlags){
+            return false
+        }
+        #if os(iOS)
+            // It's available just for iOS because it's checking if the device is using mobile data
+            if reachabilityFlags.contains(.isWWAN) {
+                return true
+            }
+        #endif
+        // Connected to wi-fi.
         return true
     }
+    func isNetworkReachable(with flags: SCNetworkReachabilityFlags) -> Bool {
+        let isReachable = flags.contains(.reachable)
+        let needsConnection = flags.contains(.connectionRequired)
+        let canConnectAutomatically = flags.contains(.connectionOnDemand) || flags.contains(.connectionOnTraffic)
+        let canConnectWithoutUserInteraction = canConnectAutomatically && !flags.contains(.interventionRequired)
+        
+        return isReachable && (!needsConnection || canConnectWithoutUserInteraction)
+    }
 
+    
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
         // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
